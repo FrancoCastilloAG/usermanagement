@@ -1,56 +1,31 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
-        REGISTRY_URL = 'https://registry.hub.docker.com'
-        REPO_NAME = 'tu-repo-en-dockerhub'
-    }
-
     stages {
         stage('Checkout') {
             steps {
+                // Checkout del repositorio Git
                 checkout scm
             }
         }
         stage('Build') {
             steps {
-                script {
-                    dockerImage = docker.build("${REPO_NAME}:${env.BUILD_ID}")
-                }
+                // Construcción de la aplicación
+                sh 'npm install'
+                sh 'npm run build'
             }
         }
         stage('Test') {
             steps {
-                script {
-                    dockerImage.inside {
-                        sh 'npm test'
-                    }
-                }
+                // Ejecución de pruebas
+                sh 'npm test'
             }
         }
-        stage('Push to DockerHub') {
+        stage('Deploy') {
             steps {
-                script {
-                    docker.withRegistry("${REGISTRY_URL}", "${DOCKER_CREDENTIALS_ID}") {
-                        dockerImage.push("${env.BUILD_ID}")
-                        dockerImage.push('latest')
-                    }
-                }
+                // Despliegue de la aplicación
+                sh 'npm run start:prod &'
             }
-        }
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    sh 'kubectl apply -f k8s/deployment.yaml'
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
         }
     }
 }
